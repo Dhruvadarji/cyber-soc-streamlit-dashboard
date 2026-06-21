@@ -1,4 +1,4 @@
-from modules.db import init_db, insert_session, get_sessions
+from modules.db import init_db, insert_session, get_sessions, insert_alert
 
 init_db()
 
@@ -154,6 +154,8 @@ elif menu == "Session Monitor":
             st.success("Normal Login")
 # ------------------ SESSION DASHBOARD ------------------
 
+# ------------------ SESSION DASHBOARD ------------------
+
 elif menu == "Session Dashboard":
 
     from streamlit_autorefresh import st_autorefresh
@@ -168,6 +170,10 @@ elif menu == "Session Dashboard":
         columns=["Username", "Device", "IP", "Login Time"]
     )
 
+    if df.empty:
+        st.info("No session data available yet.")
+        st.stop()
+
     st.markdown("## 🛡️ SYSTEM STATUS")
 
     col1, col2, col3 = st.columns(3)
@@ -180,6 +186,7 @@ elif menu == "Session Dashboard":
 
     st.markdown("### 📡 LIVE SESSION STREAM")
     st.dataframe(df, use_container_width=True)
+    # ------------------ MULTIPLE LOGIN ------------------
 
 # ------------------ MULTIPLE LOGIN ------------------
 
@@ -193,19 +200,23 @@ elif menu == "Multiple Login Detector":
 
         result = check_multiple_logins(username)
 
-    st.write(f"Unique Devices: {result['device_count']}")
-    st.write(f"Unique IPs: {result['ip_count']}")
+        st.write(f"Unique Devices: {result['device_count']}")
+        st.write(f"Unique IPs: {result['ip_count']}")
 
-    if result["multiple_login"]:
-        st.error("🚨 Suspicious Login Pattern Detected")
+        if result["multiple_login"]:
+            st.error("🚨 Suspicious Login Pattern Detected")
 
-        for reason in result["reasons"]:
-            st.write("•", reason)
+            for reason in result["reasons"]:
+                st.write("•", reason)
 
-        insert_alert(username, "Multiple Login Attack Pattern", 70)
+            insert_alert(
+                username,
+                "Multiple Login Attack Pattern",
+                70
+            )
 
-    else:
-        st.success("Normal Activity")
+        else:
+            st.success("Normal Activity")
 
 # ------------------ SUSPICIOUS LOGIN ------------------
 
@@ -247,6 +258,8 @@ elif menu == "Project Overview":
 
 # ------------------ RISK ANALYTICS ------------------
 
+# ------------------ RISK ANALYTICS ------------------
+
 elif menu == "Risk Analytics Dashboard":
 
     st.title("📊 Risk Analytics Engine")
@@ -258,25 +271,53 @@ elif menu == "Risk Analytics Dashboard":
         columns=["Username", "Device", "IP", "Login Time"]
     )
 
-    # Apply unified risk model
-    df["Risk"] = df.apply(lambda x: calculate_risk(x["Username"], x["Device"], x["IP"]), axis=1)
+    # Prevent crash if no session data exists
+    if df.empty:
+        st.warning("No session data available.")
+        st.stop()
+
+    # Apply risk calculation
+    df["Risk"] = df.apply(
+        lambda x: calculate_risk(
+            x["Username"],
+            x["Device"],
+            x["IP"]
+        ),
+        axis=1
+    )
 
     st.subheader("📈 Risk Distribution")
-
     st.area_chart(df["Risk"])
 
     st.subheader("🚨 High Risk Sessions")
 
     high_risk = df[df["Risk"] >= 30]
-    st.dataframe(high_risk, use_container_width=True)
+
+    st.dataframe(
+        high_risk,
+        use_container_width=True
+    )
 
     st.subheader("📊 Risk Summary")
 
     col1, col2, col3 = st.columns(3)
 
-    col1.metric("Total Sessions", len(df))
-    col2.metric("High Risk Users", len(high_risk))
-    col3.metric("Avg Risk Score", round(df["Risk"].mean(), 2))
+    col1.metric(
+        "Total Sessions",
+        len(df)
+    )
+
+    col2.metric(
+        "High Risk Users",
+        len(high_risk)
+    )
+
+    col3.metric(
+        "Avg Risk Score",
+        round(df["Risk"].mean(), 2)
+    )
+# ------------------ EXECUTIVE OVERVIEW ------------------
+
 # ------------------ EXECUTIVE OVERVIEW ------------------
 
 elif menu == "Executive Overview":
@@ -289,6 +330,11 @@ elif menu == "Executive Overview":
         data,
         columns=["Username", "Device", "IP", "Login Time"]
     )
+
+    # Prevent crash when database is empty
+    if df.empty:
+        st.warning("No session data available.")
+        st.stop()
 
     st.subheader("📊 System Summary")
 
@@ -319,10 +365,20 @@ elif menu == "Alert Dashboard":
     conn = sqlite3.connect("sessions.db")
     cursor = conn.cursor()
 
-    cursor.execute("SELECT username, reason, risk, time FROM alerts")
+    cursor.execute(
+        "SELECT username, reason, risk, time FROM alerts"
+    )
+
     alerts = cursor.fetchall()
 
-    df = pd.DataFrame(alerts, columns=["User", "Reason", "Risk", "Time"])
+    df = pd.DataFrame(
+        alerts,
+        columns=["User", "Reason", "Risk", "Time"]
+    )
+
+    if df.empty:
+        st.info("No alerts generated yet.")
+        st.stop()
 
     st.subheader("Active Alerts")
 
@@ -333,6 +389,9 @@ elif menu == "Alert Dashboard":
     col1, col2 = st.columns(2)
 
     col1.metric("Total Alerts", len(df))
-    col2.metric("Critical Alerts", len(df[df["Risk"] >= 70]))
+    col2.metric(
+        "Critical Alerts",
+        len(df[df["Risk"] >= 70])
+    )
 
     st.bar_chart(df["Risk"])
