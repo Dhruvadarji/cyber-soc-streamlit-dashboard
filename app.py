@@ -13,6 +13,7 @@ from modules.session_fingerprint import generate_fingerprint
 
 import streamlit as st
 import pandas as pd
+import sqlite3
 
 # ------------------ PAGE CONFIG ------------------
 
@@ -315,7 +316,7 @@ elif menu == "Alert Dashboard":
 
     st.title("🚨 SOC Alert Center")
 
-    conn = sqlite3.connect("data/sessions.db")
+    conn = sqlite3.connect("sessions.db")
     cursor = conn.cursor()
 
     cursor.execute("SELECT username, reason, risk, time FROM alerts")
